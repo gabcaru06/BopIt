@@ -1,3 +1,5 @@
+//Edwin Hill - fork / pull request
+
 const int buttonPin = 2;  
 const int led1 = 8;       
 const int led2 = 7;       
