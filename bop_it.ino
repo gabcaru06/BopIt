@@ -1,0 +1,202 @@
+#include <SoftwareSerial.h>
+#include <SPI.h>
+#include <Wire.h>
+
+// Pin definitions
+#define MIC_PIN A0
+#define PHOTO_PIN A1
+#define GREEN_LED_PIN 13
+#define RED_LED_PIN 12
+#define BUTTON_PIN 2
+#define ACCEL_CS 10
+#define HEX_DISPLAY_ADDR 0x70
+
+// MP3 player serial
+SoftwareSerial mp3Serial(0, 1);
+
+// Game variables
+int score = 0;
+int responseTime = 2000;  // milliseconds
+const int MIN_RESPONSE_TIME = 300;
+
+// Sensor thresholds (TODO: change values to correct values after testing)
+int micThreshold = 400;
+int photoThreshold = 300;
+int accelThreshold = 100;
+
+// Actions
+#define INTIMIDATE 1
+#define ADMIRE 2
+#define BRIBE 3
+
+//HARDWARE INITIALIZATION
+void initializeHardware() {
+  Serial.begin(9600);
+  mp3Serial.begin(9600);
+  Wire.begin();
+  
+  // Input sensors
+  pinMode(MIC_PIN, INPUT);
+  pinMode(PHOTO_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  
+  // Output LEDs
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
+  digitalWrite(GREEN_LED_PIN, LOW);
+  digitalWrite(RED_LED_PIN, LOW);
+  
+  // Accelerometer SPI
+  pinMode(ACCEL_CS, OUTPUT);
+  digitalWrite(ACCEL_CS, HIGH);
+  SPI.begin();
+  
+  // Initialize hex display with score 0
+  updateHexDisplay(0);
+  
+  Serial.println("Hardware initialized");
+}
+
+// Play MP3 file
+void playMP3(int fileNumber) {
+  byte cmd[] = {0x7E, 0x04, 0x08, 0x00, fileNumber, 0xEF}; // for the DFPlayer Mini
+  mp3Serial.write(cmd, 6);
+}
+
+// SENSOR READ FUNCTIONS 
+int readAccelerator() {
+  digitalWrite(ACCEL_CS, LOW);
+  SPI.transfer(0x28 | 0x80);
+  int value = SPI.transfer(0);
+  digitalWrite(ACCEL_CS, HIGH);
+  return value;
+}
+
+int readPhotoSensor() {
+  return analogRead(PHOTO_PIN);
+}
+
+int readMicrophone() {
+  return analogRead(MIC_PIN);
+}
+
+// HEX DISPLAY
+void updateHexDisplay(int value) {
+  // Send score to hex display over I2C 
+  // Convert value to hex and send via I2C to address 0x70
+  Wire.beginTransmission(HEX_DISPLAY_ADDR);
+  Wire.write(value);  // Send the value directly
+  Wire.endTransmission();
+  
+  Serial.print("Display: 0x");
+  Serial.println(value, HEX);
+}
+
+// LED FEEDBACK
+void flashGreenLED() {
+  digitalWrite(GREEN_LED_PIN, HIGH);
+  delay(1000);
+  digitalWrite(GREEN_LED_PIN, LOW);
+}
+
+void flashRedLED() {
+  digitalWrite(RED_LED_PIN, HIGH);
+  delay(1000);
+  digitalWrite(RED_LED_PIN, LOW);
+}
+
+// GAME FUNCTIONS 
+int getRandomAction() {
+  return random(1, 4);  // 1=INTIMIDATE, 2=ADMIRE, 3=BRIBE
+}
+
+void playInstruction(int action) {
+  // Files 10, 11, 12 are INTIMIDATE, ADMIRE, BRIBE instructions
+  playMP3(9 + action);
+  delay(1000);
+}
+
+bool waitForAction(int expectedAction) {
+  unsigned long startTime = millis();
+  
+  while (millis() - startTime < responseTime) {
+    if (expectedAction == INTIMIDATE && readAccelerator() > accelThreshold) {
+      return true;
+    }
+    if (expectedAction == ADMIRE && readMicrophone() > micThreshold) {
+      return true;
+    }
+    if (expectedAction == BRIBE && readPhotoSensor() > photoThreshold) {
+      return true;
+    }
+    delay(10);
+  }
+  
+  return false;  // Timeout
+}
+
+void decreaseResponseTime() {
+  responseTime = max(MIN_RESPONSE_TIME, responseTime - 100);
+}
+
+// Setup
+void setup() {
+  randomSeed(analogRead(A2));
+  initializeHardware();
+  playMP3(1);  // Startup sound
+}
+
+// Main loop
+void loop() {
+  // Wait for player to press start button
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    delay(50);
+    playMP3(2);  // Start sound
+    delay(1000);
+    
+    score = 0;
+    responseTime = 2000;
+    
+    // MAIN GAME LOOP
+    while (score < 99) {
+      // Randomly select command
+      int action = getRandomAction();
+      
+      // Play instruction
+      playInstruction(action);
+      
+      // Wait for player input
+      if (waitForAction(action)) {
+        // Correct action
+        score++;
+        updateHexDisplay(score);
+        flashGreenLED();
+        playMP3(3);  // Success sound
+        delay(500);
+        
+        // Decrease response time for next round
+        decreaseResponseTime();
+      } else {
+        // Wrong action or timeout
+        flashRedLED();
+        playMP3(4);  // Failure sound
+        delay(1000);
+        break;  // Game over
+      }
+    }
+    
+    // Check win condition
+    if (score >= 99) {
+      playMP3(5);  // Victory sound
+      Serial.print("WIN! Final Score: ");
+      Serial.println(score);
+    } else {
+      Serial.print("Game Over! Final Score: ");
+      Serial.println(score);
+    }
+    
+    delay(2000);
+  }
+  
+  delay(10);
+}
