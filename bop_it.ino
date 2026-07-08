@@ -8,8 +8,10 @@
 #define GREEN_LED_PIN 13
 #define RED_LED_PIN 12
 #define BUTTON_PIN 2
-#define ACCEL_CS 10
-#define HEX_DISPLAY_ADDR 0x70
+#define HEX_SER_PIN 4
+#define HEX_RCLK_PIN 5
+#define HEX_SRCLK_PIN 6
+#define ACCEL_CS A4
 
 // MP3 player serial
 SoftwareSerial mp3Serial(0, 1);
@@ -24,10 +26,37 @@ int micThreshold = 400;
 int photoThreshold = 300;
 int accelThreshold = 100;
 
+const bool HEX_COMMON_ANODE = false;
+
 // Actions
 #define INTIMIDATE 1
 #define ADMIRE 2
 #define BRIBE 3
+
+const byte SEGMENT_DIGITS[10] = {
+  0x3F, // 0
+  0x06, // 1
+  0x5B, // 2
+  0x4F, // 3
+  0x66, // 4
+  0x6D, // 5
+  0x7D, // 6
+  0x07, // 7
+  0x7F, // 8
+  0x6F  // 9
+};
+
+byte displayByte(byte pattern) {
+  return HEX_COMMON_ANODE ? (byte)~pattern : pattern;
+}
+
+void writeTwoDigits(byte leftPattern, byte rightPattern) {
+  digitalWrite(HEX_RCLK_PIN, LOW);
+  // First shifted byte lands on the second (farther) register in the chain.
+  shiftOut(HEX_SER_PIN, HEX_SRCLK_PIN, MSBFIRST, displayByte(leftPattern));
+  shiftOut(HEX_SER_PIN, HEX_SRCLK_PIN, MSBFIRST, displayByte(rightPattern));
+  digitalWrite(HEX_RCLK_PIN, HIGH);
+}
 
 //HARDWARE INITIALIZATION
 void initializeHardware() {
@@ -45,7 +74,12 @@ void initializeHardware() {
   pinMode(RED_LED_PIN, OUTPUT);
   digitalWrite(GREEN_LED_PIN, LOW);
   digitalWrite(RED_LED_PIN, LOW);
-  
+
+  // 74HC595 display control pins
+  pinMode(HEX_SER_PIN, OUTPUT);
+  pinMode(HEX_SRCLK_PIN, OUTPUT);
+  pinMode(HEX_RCLK_PIN, OUTPUT);
+
   // Accelerometer SPI
   pinMode(ACCEL_CS, OUTPUT);
   digitalWrite(ACCEL_CS, HIGH);
@@ -58,6 +92,7 @@ void initializeHardware() {
 }
 
 // Play MP3 file
+// TODO: Add MP3 files to microSD card (01.mp3-05.mp3, 10.mp3-12.mp3)
 void playMP3(int fileNumber) {
   byte cmd[] = {0x7E, 0x04, 0x08, 0x00, fileNumber, 0xEF}; // for the DFPlayer Mini
   mp3Serial.write(cmd, 6);
@@ -82,14 +117,14 @@ int readMicrophone() {
 
 // HEX DISPLAY
 void updateHexDisplay(int value) {
-  // Send score to hex display over I2C 
-  // Convert value to hex and send via I2C to address 0x70
-  Wire.beginTransmission(HEX_DISPLAY_ADDR);
-  Wire.write(value);  // Send the value directly
-  Wire.endTransmission();
+  value = constrain(value, 0, 99);
+  int tens = value / 10;
+  int ones = value % 10;
+
+  writeTwoDigits(SEGMENT_DIGITS[tens], SEGMENT_DIGITS[ones]);
   
-  Serial.print("Display: 0x");
-  Serial.println(value, HEX);
+  Serial.print("Display: ");
+  Serial.println(value);
 }
 
 // LED FEEDBACK
