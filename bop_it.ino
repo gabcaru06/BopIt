@@ -3,11 +3,11 @@
 #include <Wire.h>
 
 // Pin definitions
-#define MIC_PIN A0
-#define PHOTO_PIN A1
-#define GREEN_LED_PIN 13
-#define RED_LED_PIN 12
-#define BUTTON_PIN 2
+#define MIC_PIN A1
+#define PHOTO_PIN A0
+#define GREEN_LED_PIN 2
+#define RED_LED_PIN 3
+#define BUTTON_PIN 7
 #define HEX_SER_PIN 4
 #define HEX_RCLK_PIN 5
 #define HEX_SRCLK_PIN 6
