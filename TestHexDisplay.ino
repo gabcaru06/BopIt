@@ -2,8 +2,7 @@
 #define HEX_RCLK_PIN 5
 #define HEX_SRCLK_PIN 6
 
-// Set to true if your display is common-anode.
-const bool HEX_COMMON_ANODE = false;
+const bool HEX_COMMON_ANODE = true;
 
 const byte SEGMENT_DIGITS[10] = {
   0x3F, // 0
