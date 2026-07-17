@@ -2,6 +2,7 @@
 
 #define ACCEL_CS A4
 #define GREEN_LED_PIN 2
+// TERRY NOTE PROPER ADRESS IS 0x68
 
 // Adjust Threshold
 int accelThreshold = 100;
