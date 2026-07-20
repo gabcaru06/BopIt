@@ -22,7 +22,7 @@ BopIt/
 │   ├── TestHexDisplay.ino  # 2-digit 7-segment score display test
 │   ├── TestMic.ino         # Microphone/sound sensor test (Admire)
 │   ├── TestMP3.ino         # DFPlayer Mini MP3 module test
-│   └── TestPhoto.ino       # InfraredS sensor test (Bribe)
+│   └── TestPhoto.ino       # Infrared sensor test (Bribe)
 └── README.md
 ```
 
