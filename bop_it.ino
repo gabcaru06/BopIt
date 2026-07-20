@@ -225,7 +225,7 @@ void decreaseResponseTime() {
 
 // Setup
 void setup() {
-  randomSeed(analogRead(A2));
+  randomSeed(analogRead(A0));
   initializeHardware();
   playMP3(1);  // Startup sound
 }
