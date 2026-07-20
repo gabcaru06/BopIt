@@ -1,5 +1,4 @@
 #include <SoftwareSerial.h>
-#include <SPI.h>
 #include <Wire.h>
 
 // Pin definitions
@@ -11,7 +10,9 @@
 #define HEX_SER_PIN 4
 #define HEX_RCLK_PIN 5
 #define HEX_SRCLK_PIN 6
-#define ACCEL_CS A4
+
+// MPU6050 accelerometer (I2C)
+#define MPU6050_ADDR 0x68
 
 // MP3 player serial
 SoftwareSerial mp3Serial(0, 1);
@@ -24,7 +25,7 @@ const int MIN_RESPONSE_TIME = 300;
 // Sensor thresholds (TODO: change values to correct values after testing)
 int micThreshold = 80;
 int photoThreshold = 300;
-int accelThreshold = 100;
+int accelThreshold = 5000;
 
 const bool HEX_COMMON_ANODE = true;
 
@@ -80,10 +81,18 @@ void initializeHardware() {
   pinMode(HEX_SRCLK_PIN, OUTPUT);
   pinMode(HEX_RCLK_PIN, OUTPUT);
 
-  // Accelerometer SPI
-  pinMode(ACCEL_CS, OUTPUT);
-  digitalWrite(ACCEL_CS, HIGH);
-  SPI.begin();
+  // Accelerometer (MPU6050 over I2C)
+  writeRegister(0x6B, 0x00);  // Wake MPU6050
+  delay(100);
+
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(0x75);  // WHO_AM_I register
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU6050_ADDR, 1);
+  byte accelId = Wire.read();
+  Serial.print("WHO_AM_I: ");
+  Serial.println(accelId, HEX);
+  Serial.println(accelId == MPU6050_ADDR ? "MPU6050 detected" : "MPU6050 NOT detected");
   
   // Initialize hex display with score 0
   updateHexDisplay(0);
@@ -99,12 +108,28 @@ void playMP3(int fileNumber) {
 }
 
 // SENSOR READ FUNCTIONS 
-int readAccelerator() {
-  digitalWrite(ACCEL_CS, LOW);
-  SPI.transfer(0x28 | 0x80);
-  int value = SPI.transfer(0);
-  digitalWrite(ACCEL_CS, HIGH);
+void writeRegister(byte reg, byte data) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  Wire.write(data);
+  Wire.endTransmission();
+}
+
+int16_t readWord(byte reg) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  Wire.endTransmission(false);
+
+  Wire.requestFrom(MPU6050_ADDR, 2);
+
+  int16_t value = Wire.read() << 8 | Wire.read();
+
   return value;
+}
+
+int readAccelerator() {
+  int16_t accelX = readWord(0x3B);
+  return abs(accelX);
 }
 
 int readPhotoSensor() {
