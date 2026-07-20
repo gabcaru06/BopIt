@@ -22,11 +22,11 @@ int responseTime = 2000;  // milliseconds
 const int MIN_RESPONSE_TIME = 300;
 
 // Sensor thresholds (TODO: change values to correct values after testing)
-int micThreshold = 400;
+int micThreshold = 80;
 int photoThreshold = 300;
 int accelThreshold = 100;
 
-const bool HEX_COMMON_ANODE = false;
+const bool HEX_COMMON_ANODE = true;
 
 // Actions
 #define INTIMIDATE 1
@@ -112,7 +112,23 @@ int readPhotoSensor() {
 }
 
 int readMicrophone() {
-  return analogRead(MIC_PIN);
+  int signalMax = 0;
+  int signalMin = 1023;
+
+  // Collect samples for 50 ms (readjusted for LM386)
+  unsigned long startTime = millis();
+
+  while (millis() - startTime < 50) {
+    int sample = analogRead(MIC_PIN);
+
+    if (sample > signalMax)
+      signalMax = sample;
+
+    if (sample < signalMin)
+      signalMin = sample;
+  }
+
+  return signalMax - signalMin;
 }
 
 // HEX DISPLAY
