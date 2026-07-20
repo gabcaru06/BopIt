@@ -21,7 +21,7 @@ void loop() {
   Serial.print(value);
 
   if (value > photoThreshold) {
-    Serial.println("  <-- DETECTED");
+    Serial.println("DETECTED");
     digitalWrite(GREEN_LED_PIN, HIGH);
   } else {
     Serial.println();

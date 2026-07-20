@@ -1,3 +1,5 @@
+#include "arduino_secrets.h"
+
 #define HEX_SER_PIN 4
 #define HEX_RCLK_PIN 5
 #define HEX_SRCLK_PIN 6

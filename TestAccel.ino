@@ -1,46 +1,83 @@
-#include <SPI.h>
+#include "arduino_secrets.h"
 
-#define ACCEL_CS A4
+#include <Wire.h>
+
 #define GREEN_LED_PIN 2
-// TERRY NOTE PROPER ADRESS IS 0x68
 
-// Adjust Threshold
-int accelThreshold = 100;
+int accelThreshold = 5000;
 
-int readAccelerator() {
-  digitalWrite(ACCEL_CS, LOW);
-  SPI.transfer(0x28 | 0x80); // read bit set (only reads a single register may need to change this)
-  int value = SPI.transfer(0);
-  digitalWrite(ACCEL_CS, HIGH);
+void writeRegister(byte reg, byte data)
+{
+  Wire.beginTransmission(0x68);
+  Wire.write(reg);
+  Wire.write(data);
+  Wire.endTransmission();
+}
+
+
+int16_t readWord(byte reg)
+{
+  Wire.beginTransmission(0x68);
+  Wire.write(reg);
+  Wire.endTransmission(false);
+
+  Wire.requestFrom(0x68, 2);
+
+  int16_t value = Wire.read() << 8 | Wire.read();
+
   return value;
 }
 
-void setup() {
+
+void setup()
+{
   Serial.begin(9600);
+
   pinMode(GREEN_LED_PIN, OUTPUT);
-  digitalWrite(GREEN_LED_PIN, LOW);
 
-  pinMode(ACCEL_CS, OUTPUT);
-  digitalWrite(ACCEL_CS, HIGH);
-  SPI.begin();
+  Wire.begin();
 
-  Serial.println("Accelerometer Test");
+  // Wake MPU6050
+  writeRegister(0x6B, 0x00);
+
+  delay(100);
+
+  // Check device ID
+  Wire.beginTransmission(0x68);
+  Wire.write(0x75);
+  Wire.endTransmission(false);
+
+  Wire.requestFrom(0x68, 1);
+
+  byte id = Wire.read();
+
+  Serial.print("WHO_AM_I: ");
+  Serial.println(id, HEX);
+
+  if(id == 0x68)
+    Serial.println("MPU6050 detected");
+  else
+    Serial.println("MPU6050 NOT detected");
 }
 
-// Reads one axis register and lights the green LED when motion
-void loop() {
-  int value = readAccelerator();
 
-  Serial.print("Accel: ");
-  Serial.print(value);
+void loop()
+{
+  int16_t accelX = readWord(0x3B);
 
-  if (value > accelThreshold) {
-    Serial.println("DETECTED");
+  Serial.print("Accel X: ");
+  Serial.println(accelX);
+
+
+  if(abs(accelX) > accelThreshold)
+  {
     digitalWrite(GREEN_LED_PIN, HIGH);
-  } else {
-    Serial.println();
+    Serial.println("MOTION DETECTED");
+  }
+  else
+  {
     digitalWrite(GREEN_LED_PIN, LOW);
   }
 
-  delay(50);
+  delay(100);
 }

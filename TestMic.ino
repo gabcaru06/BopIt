@@ -1,34 +1,57 @@
-// Serial Monitor at 9600 baud should show live readings.
+#include "arduino_secrets.h"
 
-#define MIC_PIN A1          //Microphone should be on pin A1
+//readjusted for LM386
+
+#define MIC_PIN A1
 #define GREEN_LED_PIN 2
 #define RED_LED_PIN 3
 
-// Adjust this after watching the Serial Monitor values.
-int micThreshold = 400;
+// Change this after watching the Serial Monitor
+const int micThreshold = 80;
 
 void setup() {
   Serial.begin(9600);
-  pinMode(MIC_PIN, INPUT);
+
   pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
+
   digitalWrite(GREEN_LED_PIN, LOW);
-  Serial.println("Mic Test");
+  digitalWrite(RED_LED_PIN, LOW);
+
+  Serial.println("LM386 Sound Sensor Test");
 }
 
-// Reads the mic and lights the green LED when sound is detected.
 void loop() {
-  int value = analogRead(MIC_PIN);
+  int signalMax = 0;
+  int signalMin = 1023;
 
-  Serial.print("Mic: ");
-  Serial.print(value);
+  // Collect samples for 50 ms
+  unsigned long startTime = millis();
 
-  if (value > micThreshold) {
-    Serial.println("DETECTED");
-    digitalWrite(GREEN_LED_PIN, HIGH);
-  } else {
-    Serial.println();
-    digitalWrite(GREEN_LED_PIN, LOW);
+  while (millis() - startTime < 50) {
+    int sample = analogRead(MIC_PIN);
+
+    if (sample > signalMax)
+      signalMax = sample;
+
+    if (sample < signalMin)
+      signalMin = sample;
   }
 
-  delay(50);
+  int amplitude = signalMax - signalMin;
+
+  Serial.print("Amplitude: ");
+  Serial.println(amplitude);
+
+  if (amplitude > micThreshold) {
+    digitalWrite(GREEN_LED_PIN, HIGH);
+    digitalWrite(RED_LED_PIN, LOW);
+
+    Serial.println("SOUND DETECTED");
+  } else {
+    digitalWrite(GREEN_LED_PIN, LOW);
+    digitalWrite(RED_LED_PIN, LOW);
+  }
+
+  delay(20);
 }
