@@ -1,15 +1,18 @@
 #include <SoftwareSerial.h>
-#include <SPI.h>
 #include <Wire.h>
 
 // Pin definitions
-#define MIC_PIN A0
-#define PHOTO_PIN A1
-#define GREEN_LED_PIN 13
-#define RED_LED_PIN 12
-#define BUTTON_PIN 2
-#define ACCEL_CS 10
-#define HEX_DISPLAY_ADDR 0x70
+#define MIC_PIN A1
+#define PHOTO_PIN A2
+#define GREEN_LED_PIN 2
+#define RED_LED_PIN 3
+#define BUTTON_PIN 7
+#define HEX_SER_PIN 4
+#define HEX_RCLK_PIN 5
+#define HEX_SRCLK_PIN 6
+
+// MPU6050 accelerometer (I2C)
+#define MPU6050_ADDR 0x68
 
 // MP3 player serial
 SoftwareSerial mp3Serial(0, 1);
@@ -20,14 +23,45 @@ int responseTime = 2000;  // milliseconds
 const int MIN_RESPONSE_TIME = 300;
 
 // Sensor thresholds (TODO: change values to correct values after testing)
-int micThreshold = 400;
+int micThreshold = 80;
 int photoThreshold = 300;
-int accelThreshold = 100;
+int accelThreshold = 5000;
+
+const bool HEX_COMMON_ANODE = true;
 
 // Actions
 #define INTIMIDATE 1
 #define ADMIRE 2
 #define BRIBE 3
+
+const byte SEGMENT_DIGITS[10] = {
+  0x3F, // 0
+  0x06, // 1
+  0x5B, // 2
+  0x4F, // 3
+  0x66, // 4
+  0x6D, // 5
+  0x7D, // 6
+  0x07, // 7
+  0x7F, // 8
+  0x6F  // 9
+};
+
+byte displayByte(byte pattern) {
+  if (HEX_COMMON_ANODE) {
+    return (byte)~pattern;
+  } else {
+    return pattern;
+  }
+}
+
+void writeTwoDigits(byte leftPattern, byte rightPattern) {
+  digitalWrite(HEX_RCLK_PIN, LOW);
+  // First shifted byte lands on the second (farther) register in the chain.
+  shiftOut(HEX_SER_PIN, HEX_SRCLK_PIN, MSBFIRST, displayByte(leftPattern));
+  shiftOut(HEX_SER_PIN, HEX_SRCLK_PIN, MSBFIRST, displayByte(rightPattern));
+  digitalWrite(HEX_RCLK_PIN, HIGH);
+}
 
 //HARDWARE INITIALIZATION
 void initializeHardware() {
@@ -45,11 +79,28 @@ void initializeHardware() {
   pinMode(RED_LED_PIN, OUTPUT);
   digitalWrite(GREEN_LED_PIN, LOW);
   digitalWrite(RED_LED_PIN, LOW);
-  
-  // Accelerometer SPI
-  pinMode(ACCEL_CS, OUTPUT);
-  digitalWrite(ACCEL_CS, HIGH);
-  SPI.begin();
+
+  // 74HC595 display control pins
+  pinMode(HEX_SER_PIN, OUTPUT);
+  pinMode(HEX_SRCLK_PIN, OUTPUT);
+  pinMode(HEX_RCLK_PIN, OUTPUT);
+
+  // Accelerometer (MPU6050 over I2C)
+  writeRegister(0x6B, 0x00);  // Wake MPU6050
+  delay(100);
+
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(0x75);  // WHO_AM_I register
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU6050_ADDR, 1);
+  byte accelId = Wire.read();
+  Serial.print("WHO_AM_I: ");
+  Serial.println(accelId, HEX);
+  if (accelId == MPU6050_ADDR) {
+    Serial.println("MPU6050 detected");
+  } else {
+    Serial.println("MPU6050 NOT detected");
+  }
   
   // Initialize hex display with score 0
   updateHexDisplay(0);
@@ -58,18 +109,35 @@ void initializeHardware() {
 }
 
 // Play MP3 file
+// TODO: Add MP3 files to microSD card (01.mp3-05.mp3, 10.mp3-12.mp3)
 void playMP3(int fileNumber) {
   byte cmd[] = {0x7E, 0x04, 0x08, 0x00, fileNumber, 0xEF}; // for the DFPlayer Mini
   mp3Serial.write(cmd, 6);
 }
 
 // SENSOR READ FUNCTIONS 
-int readAccelerator() {
-  digitalWrite(ACCEL_CS, LOW);
-  SPI.transfer(0x28 | 0x80);
-  int value = SPI.transfer(0);
-  digitalWrite(ACCEL_CS, HIGH);
+void writeRegister(byte reg, byte data) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  Wire.write(data);
+  Wire.endTransmission();
+}
+
+int16_t readWord(byte reg) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  Wire.endTransmission(false);
+
+  Wire.requestFrom(MPU6050_ADDR, 2);
+
+  int16_t value = Wire.read() << 8 | Wire.read();
+
   return value;
+}
+
+int readAccelerator() {
+  int16_t accelX = readWord(0x3B);
+  return abs(accelX);
 }
 
 int readPhotoSensor() {
@@ -77,19 +145,35 @@ int readPhotoSensor() {
 }
 
 int readMicrophone() {
-  return analogRead(MIC_PIN);
+  int signalMax = 0;
+  int signalMin = 1023;
+
+  // Collect samples for 50 ms (readjusted for LM386)
+  unsigned long startTime = millis();
+
+  while (millis() - startTime < 50) {
+    int sample = analogRead(MIC_PIN);
+
+    if (sample > signalMax)
+      signalMax = sample;
+
+    if (sample < signalMin)
+      signalMin = sample;
+  }
+
+  return signalMax - signalMin;
 }
 
 // HEX DISPLAY
 void updateHexDisplay(int value) {
-  // Send score to hex display over I2C 
-  // Convert value to hex and send via I2C to address 0x70
-  Wire.beginTransmission(HEX_DISPLAY_ADDR);
-  Wire.write(value);  // Send the value directly
-  Wire.endTransmission();
+  value = constrain(value, 0, 99);
+  int tens = value / 10;
+  int ones = value % 10;
+
+  writeTwoDigits(SEGMENT_DIGITS[tens], SEGMENT_DIGITS[ones]);
   
-  Serial.print("Display: 0x");
-  Serial.println(value, HEX);
+  Serial.print("Display: ");
+  Serial.println(value);
 }
 
 // LED FEEDBACK
@@ -126,7 +210,7 @@ bool waitForAction(int expectedAction) {
     if (expectedAction == ADMIRE && readMicrophone() > micThreshold) {
       return true;
     }
-    if (expectedAction == BRIBE && readPhotoSensor() > photoThreshold) {
+    if (expectedAction == BRIBE && readPhotoSensor() < photoThreshold) {
       return true;
     }
     delay(10);
@@ -141,7 +225,7 @@ void decreaseResponseTime() {
 
 // Setup
 void setup() {
-  randomSeed(analogRead(A2));
+  randomSeed(analogRead(A0));
   initializeHardware();
   playMP3(1);  // Startup sound
 }
