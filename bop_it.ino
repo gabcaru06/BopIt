@@ -3,7 +3,7 @@
 
 // Pin definitions
 #define MIC_PIN A1
-#define PHOTO_PIN A0
+#define PHOTO_PIN A2
 #define GREEN_LED_PIN 2
 #define RED_LED_PIN 3
 #define BUTTON_PIN 7
@@ -48,7 +48,11 @@ const byte SEGMENT_DIGITS[10] = {
 };
 
 byte displayByte(byte pattern) {
-  return HEX_COMMON_ANODE ? (byte)~pattern : pattern;
+  if (HEX_COMMON_ANODE) {
+    return (byte)~pattern;
+  } else {
+    return pattern;
+  }
 }
 
 void writeTwoDigits(byte leftPattern, byte rightPattern) {
@@ -92,7 +96,11 @@ void initializeHardware() {
   byte accelId = Wire.read();
   Serial.print("WHO_AM_I: ");
   Serial.println(accelId, HEX);
-  Serial.println(accelId == MPU6050_ADDR ? "MPU6050 detected" : "MPU6050 NOT detected");
+  if (accelId == MPU6050_ADDR) {
+    Serial.println("MPU6050 detected");
+  } else {
+    Serial.println("MPU6050 NOT detected");
+  }
   
   // Initialize hex display with score 0
   updateHexDisplay(0);
@@ -202,7 +210,7 @@ bool waitForAction(int expectedAction) {
     if (expectedAction == ADMIRE && readMicrophone() > micThreshold) {
       return true;
     }
-    if (expectedAction == BRIBE && readPhotoSensor() > photoThreshold) {
+    if (expectedAction == BRIBE && readPhotoSensor() < photoThreshold) {
       return true;
     }
     delay(10);
