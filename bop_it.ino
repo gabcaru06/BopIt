@@ -207,8 +207,8 @@ int getRandomAction() {
 }
 
 void playInstruction(int action) {
-  // Files 10, 11, 12 are INTIMIDATE, ADMIRE, BRIBE instructions
-  playMP3(9 + action);
+  // Instruction tracks: BRIBE=2, ADMIRE=3, INTIMIDATE=4
+  playMP3(5 - action);
   delay(1000);
 }
 
@@ -247,9 +247,7 @@ void loop() {
   // Wait for player to press start button
   if (digitalRead(BUTTON_PIN) == LOW) {
     delay(50);
-    playMP3(2);  // Start sound
-    delay(1000);
-    
+
     score = 0;
     responseTime = 2000;
     
@@ -267,7 +265,6 @@ void loop() {
         score++;
         updateHexDisplay(score);
         flashGreenLED();
-        playMP3(3);  // Success sound
         delay(500);
         
         // Decrease response time for next round
@@ -275,7 +272,7 @@ void loop() {
       } else {
         // Wrong action or timeout
         flashRedLED();
-        playMP3(4);  // Failure sound
+        playMP3(5);  // Fail sound
         delay(1000);
         break;  // Game over
       }
@@ -283,7 +280,7 @@ void loop() {
     
     // Check win condition
     if (score >= 99) {
-      playMP3(5);  // Victory sound
+      playMP3(8);  // Victory sound
       Serial.print("WIN! Final Score: ");
       Serial.println(score);
     } else {
