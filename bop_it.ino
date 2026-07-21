@@ -15,7 +15,7 @@
 #define MPU6050_ADDR 0x68
 
 // MP3 player serial
-SoftwareSerial mp3Serial(0, 1);
+SoftwareSerial mp3Serial(8, 9);
 
 // Game variables
 int score = 0;
@@ -111,8 +111,20 @@ void initializeHardware() {
 // Play MP3 file
 // TODO: Add MP3 files to microSD card (01.mp3-05.mp3, 10.mp3-12.mp3)
 void playMP3(int fileNumber) {
-  byte cmd[] = {0x7E, 0x04, 0x08, 0x00, fileNumber, 0xEF}; // for the DFPlayer Mini
-  mp3Serial.write(cmd, 6);
+  // DFPlayer Mini 10-byte command frame:
+  //   7E FF 06 CMD FB PARA_MSB PARA_LSB CS_MSB CS_LSB EF
+  // CMD 0x03 = play track by index; parameter = track number.
+  byte cmd = 0x03;
+  byte paraMSB = highByte(fileNumber);
+  byte paraLSB = lowByte(fileNumber);
+  int16_t checksum = -(0xFF + 0x06 + cmd + 0x00 + paraMSB + paraLSB);
+  byte frame[10] = {
+    0x7E, 0xFF, 0x06, cmd, 0x00,
+    paraMSB, paraLSB,
+    highByte(checksum), lowByte(checksum),
+    0xEF
+  };
+  mp3Serial.write(frame, 10);
 }
 
 // SENSOR READ FUNCTIONS 
