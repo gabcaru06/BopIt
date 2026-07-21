@@ -3,7 +3,7 @@
 #define GREEN_LED_PIN 2
 
 
-SoftwareSerial mp3Serial(0, 1); // mp3Serial(RX, TX)
+SoftwareSerial mp3Serial(8, 9); // mp3Serial(RX, TX)
 
 // Tracks 1-5 (sounds) and 10-12 (instructions).
 const int tracks[] = {1, 2, 3, 4, 5, 10, 11, 12};
@@ -12,8 +12,19 @@ int currentTrack = 0;
 
 // Play MP3 file 
 void playMP3(int fileNumber) {
-  byte cmd[] = {0x7E, 0x04, 0x08, 0x00, fileNumber, 0xEF};
-  mp3Serial.write(cmd, 6);
+  // DFPlayer Mini 10-byte command frame
+  //   7E FF 06 CMD FB PARA_MSB PARA_LSB CS_MSB CS_LSB EF
+  byte cmd = 0x03;
+  byte paraMSB = highByte(fileNumber);
+  byte paraLSB = lowByte(fileNumber);
+  int16_t checksum = -(0xFF + 0x06 + cmd + 0x00 + paraMSB + paraLSB);
+  byte frame[10] = {
+    0x7E, 0xFF, 0x06, cmd, 0x00,
+    paraMSB, paraLSB,
+    highByte(checksum), lowByte(checksum),
+    0xEF
+  };
+  mp3Serial.write(frame, 10);
 }
 
 void setup() {
@@ -23,7 +34,7 @@ void setup() {
   digitalWrite(GREEN_LED_PIN, LOW);
 
   Serial.println("MP3 Test: Looping through tracks.");
-  delay(1000);
+  delay(1500);  // Let the DFPlayer Mini finish powering up before commands
 }
 
 void loop() {
