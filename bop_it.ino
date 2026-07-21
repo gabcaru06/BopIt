@@ -206,8 +206,35 @@ int getRandomAction() {
   return random(1, 4);  // 1=INTIMIDATE, 2=ADMIRE, 3=BRIBE
 }
 
+// Human-readable name of an action (for debug prints)
+const char* actionName(int action) {
+  switch (action) {
+    case INTIMIDATE: return "INTIMIDATE (shake)";
+    case ADMIRE:     return "ADMIRE (make noise)";
+    case BRIBE:      return "BRIBE (drop coin)";
+    default:         return "UNKNOWN";
+  }
+}
+
 void playInstruction(int action) {
   // Instruction tracks: BRIBE=2, ADMIRE=3, INTIMIDATE=4
+  Serial.print("Action needed: ");
+  Serial.println(actionName(action));
+  Serial.print("Target threshold: ");
+  switch (action) {
+    case INTIMIDATE:
+      Serial.print("accelerometer > ");
+      Serial.println(accelThreshold);
+      break;
+    case ADMIRE:
+      Serial.print("microphone > ");
+      Serial.println(micThreshold);
+      break;
+    case BRIBE:
+      Serial.print("photo sensor < ");
+      Serial.println(photoThreshold);
+      break;
+  }
   playMP3(5 - action);
   delay(1000);
 }
@@ -216,14 +243,29 @@ bool waitForAction(int expectedAction) {
   unsigned long startTime = millis();
   
   while (millis() - startTime < responseTime) {
-    if (expectedAction == INTIMIDATE && readAccelerator() > accelThreshold) {
-      return true;
+    if (expectedAction == INTIMIDATE) {
+      int reading = readAccelerator();
+      Serial.print("  accel = ");
+      Serial.print(reading);
+      Serial.print(" / threshold ");
+      Serial.println(accelThreshold);
+      if (reading > accelThreshold) return true;
     }
-    if (expectedAction == ADMIRE && readMicrophone() > micThreshold) {
-      return true;
+    else if (expectedAction == ADMIRE) {
+      int reading = readMicrophone();
+      Serial.print("  mic = ");
+      Serial.print(reading);
+      Serial.print(" / threshold ");
+      Serial.println(micThreshold);
+      if (reading > micThreshold) return true;
     }
-    if (expectedAction == BRIBE && readPhotoSensor() < photoThreshold) {
-      return true;
+    else if (expectedAction == BRIBE) {
+      int reading = readPhotoSensor();
+      Serial.print("  photo = ");
+      Serial.print(reading);
+      Serial.print(" / threshold ");
+      Serial.println(photoThreshold);
+      if (reading < photoThreshold) return true;
     }
     delay(10);
   }
