@@ -19,8 +19,8 @@ SoftwareSerial mp3Serial(8, 9);
 
 // Game variables
 int score = 0;
-int responseTime = 2000;  // milliseconds
-const int MIN_RESPONSE_TIME = 300;
+int responseTime = 8000;  // milliseconds
+const int MIN_RESPONSE_TIME = 1000;
 
 // Sensor thresholds (TODO: change values to correct values after testing)
 int micThreshold = 80;
