@@ -22,7 +22,7 @@ int score = 0;
 int responseTime = 8000;  // milliseconds
 const int MIN_RESPONSE_TIME = 1000;
 
-// Sensor thresholds (TODO: change values to correct values after testing)
+// Sensor thresholds 
 int micThreshold = 80;
 int photoThreshold = 300;
 int accelThreshold = 5000;
@@ -109,7 +109,6 @@ void initializeHardware() {
 }
 
 // Play MP3 file
-// TODO: Add MP3 files to microSD card (01.mp3-05.mp3, 10.mp3-12.mp3)
 void playMP3(int fileNumber) {
   // DFPlayer Mini 10-byte command frame:
   //   7E FF 06 CMD FB PARA_MSB PARA_LSB CS_MSB CS_LSB EF
@@ -206,7 +205,7 @@ int getRandomAction() {
   return random(1, 4);  // 1=INTIMIDATE, 2=ADMIRE, 3=BRIBE
 }
 
-// Human-readable name of an action (for debug prints)
+// debug prints
 const char* actionName(int action) {
   switch (action) {
     case INTIMIDATE: return "INTIMIDATE (shake)";

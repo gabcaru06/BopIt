@@ -17,6 +17,14 @@ shortens as the score climbs, ramping up the difficulty.
 ```
 BopIt/
 ├── bop_it.ino              # Main game sketch (the file to upload to play the game)
+├── MP3 Sound Tracks/       # Audio files that must be copied to the DFPlayer Mini microSD card
+│   ├── track 0001.wav
+│   ├── track 0003.wav
+│   ├── track 0004.mp3
+│   ├── track 0005.mp3
+│   ├── track 0010.mp3
+│   ├── track 0011.mp3
+│   └── track 0012.mp3
 ├── Test Sketches/          # Standalone sketches used to test each piece of hardware individually
 │   ├── TestAccel.ino       # Accelerometer test (Intimidate)
 │   ├── TestHexDisplay.ino  # 2-digit 7-segment score display test
@@ -56,7 +64,7 @@ single self contained `.ino` file organized into these sections:
 | Red LED | `3` | Wrong-action/timeout feedback |
 | Start button | `7` | `INPUT_PULLUP`, active LOW |
 | Hex display serial/clock/latch | `4` / `6` / `5` | Drives the two chained 74HC595 shift registers |
-| DFPlayer Mini (MP3) | `0` / `1` | Sends play-track commands over serial |
+| DFPlayer Mini (MP3) | `8` / `9` | Sends play-track commands over serial |
 
 ### Actions
 
@@ -89,9 +97,11 @@ thresholds, and logic should match what is already implemented in
    display (two 74HC595 shift registers), a DFPlayer Mini MP3 module with a
    microSD card, a push button, and red/green LEDs.
 2. **Wiring**: connect everything according to the pin map above.
-3. **MP3 tracks**: load the microSD card with numbered tracks matching the
-   `playMP3()` calls in `bop_it.ino` (startup, start, success, failure,
-   victory, and the three action-instruction sounds).
+3. **MP3 tracks (required)**: copy all files from `MP3 Sound Tracks/` onto
+  the DFPlayer Mini microSD card. The game will not play the correct cues
+  unless these tracks are present and numbered to match the `playMP3()`
+  calls in `bop_it.ino` (startup, start, success, failure, victory, and the
+  three action-instruction sounds).
 4. **Bring-up**: flash each sketch in `Test Sketches/` first to confirm
    wiring and calibrate thresholds for your components.
 5. **Play**: upload `bop_it.ino`, open the Serial Monitor at 9600 baud to
