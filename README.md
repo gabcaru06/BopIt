@@ -70,9 +70,9 @@ single self contained `.ino` file organized into these sections:
 
 | Action | Physical input | Audio cue | Sensor |
 |---|---|---|---|
-| `ADMIRE` | Speak/make noise at the device | Happy "bark" | Microphone |
-| `BRIBE` | Drop a coin into the slot | Gold coin clinking | Infrared sensor |
-| `INTIMIDATE` | Shake the box | Angry "bark" | Accelerometer |
+| `ADMIRE` | Speak/make noise at the device | Shopkeeper talking about potions sound | Microphone |
+| `BRIBE` | Drop a coin into the slot | Gold bag jingling | Infrared sensor |
+| `INTIMIDATE` | Shake the box | punch sound | Accelerometer |
 
 ## Test Sketches
 
