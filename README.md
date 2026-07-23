@@ -7,8 +7,8 @@ pressing buttons, the player negotiates with the device across three
 physical inputs: dropping a coin into a slot to **Bribe**, shaking the box
 to **Intimidate**, and speaking or making noise to **Admire**. A library of
 sound cues tells the player which response is needed each round: a gold
-coin clinking calls for a bribe, an angry "bark" calls for intimidation,
-and a happy "bark" calls for admiration. Each round must be completed
+coin clinking calls for a bribe, a punch sound effect calls for intimidation,
+and a shopkeeper asking about potions calls for admiration. Each round must be completed
 correctly and quickly using the matching sensor, and the response window
 shortens as the score climbs, ramping up the difficulty.
 
@@ -93,7 +93,7 @@ thresholds, and logic should match what is already implemented in
 ## Reproducing this project
 
 1. **Hardware**: an Arduino Nano, an MPU6050 accelerometer breakout (I2C),
-   a microphone module, an infrared/photo sensor, a 2-digit 7-segment
+   a microphone module + LM386 breakout board, an infrared/photo sensor, a 2-digit 7-segment
    display (two 74HC595 shift registers), a DFPlayer Mini MP3 module with a
    microSD card, a push button, and red/green LEDs.
 2. **Wiring**: connect everything according to the pin map above.
